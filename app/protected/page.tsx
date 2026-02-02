@@ -1,24 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function ProtectedPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
+    let ignore = false;
+
+    const init = async () => {
       const { data } = await supabase.auth.getSession();
+      if (ignore) return;
+
       if (!data.session) {
         router.replace("/login");
-      } else {
-        setLoading(false);
+        return;
       }
+      setLoading(false);
     };
 
-    checkSession();
+    init();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) router.replace("/login");
+    });
+
+    return () => {
+      ignore = true;
+      sub.subscription.unsubscribe();
+    };
   }, [router]);
 
   const handleSignOut = async () => {
@@ -33,7 +46,7 @@ export default function ProtectedPage() {
       <h1>Protected Content</h1>
       <p>You are signed in 🎉</p>
 
-      <button onClick={handleSignOut}>
+      <button onClick={handleSignOut} style={{ marginTop: 16 }}>
         Sign out
       </button>
     </div>
