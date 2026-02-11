@@ -26,6 +26,11 @@ export default function HomePage() {
     <main style={{ padding: 24 }}>
       <h1>List from Supabase</h1>
 
+      {/* 👇 ADD THIS BLOCK */}
+      <div style={{ marginBottom: 16 }}>
+        <a href="/rate">Rate captions (requires login)</a>
+      </div>
+
       {rows.map((img) => (
         <div key={img.id} style={{ marginBottom: 24 }}>
           <img
