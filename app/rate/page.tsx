@@ -33,3 +33,5 @@ export default function RatePage() {
       setCaptions((data as CaptionRow[]) ?? []);
       setLoading(false);
     };
+  }
+}
