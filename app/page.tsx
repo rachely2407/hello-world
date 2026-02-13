@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "../lib/supabaseClient";
 
 export default function HomePage() {
@@ -23,24 +24,57 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>List from Supabase</h1>
+    <main
+      style={{
+        maxWidth: 900,
+        margin: "40px auto",
+        padding: 24,
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      {/* Header */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 40,
+        }}
+      >
+        <h1 style={{ margin: 0 }}>Humor Project</h1>
 
-      {rows.map((img) => (
-        <div key={img.id} style={{ marginBottom: 24 }}>
-          <img
-            src={img.url}
-            alt={img.image_description}
+        <nav style={{ display: "flex", gap: 20 }}>
+          <Link href="/rate">Rate Captions</Link>
+          <Link href="/login">Login</Link>
+        </nav>
+      </header>
+
+      {/* Image List */}
+      <section>
+        <h2 style={{ marginBottom: 20 }}>Public Images</h2>
+
+        {rows.map((img) => (
+          <div
+            key={img.id}
             style={{
-              maxWidth: 300,
-              borderRadius: 12,
-              display: "block",
-              marginBottom: 8,
+              marginBottom: 40,
+              paddingBottom: 20,
+              borderBottom: "1px solid #eee",
             }}
-          />
-          <p>{img.image_description}</p>
-        </div>
-      ))}
+          >
+            <img
+              src={img.url}
+              alt={img.image_description}
+              style={{
+                maxWidth: "100%",
+                borderRadius: 12,
+                marginBottom: 12,
+              }}
+            />
+            <p style={{ lineHeight: 1.6 }}>{img.image_description}</p>
+          </div>
+        ))}
+      </section>
     </main>
   );
 }
