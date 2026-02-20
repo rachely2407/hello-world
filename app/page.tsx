@@ -1,80 +1,98 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useState } from "react";
+import AppShell from "@/app/components/AppShell";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function HomePage() {
-  const [rows, setRows] = useState<any[]>([]);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      const { data, error } = await supabase
-        .from("images")
-        .select("id, url, image_description")
-        .eq("is_public", true)
-        .limit(5);
-
-      if (!error) {
-        setRows(data || []);
-      }
-    }
-
-    load();
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSignedIn(!!data.session);
+    };
+    init();
   }, []);
 
   return (
-    <main
-      style={{
-        maxWidth: 900,
-        margin: "40px auto",
-        padding: 24,
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      {/* Header */}
-      <header
+    <AppShell title="Rachel's Project">
+      <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 40,
+          height: "100%",
+          minHeight: "calc(100vh - 48px - 48px)",
+          display: "grid",
+          placeItems: "center",
+          textAlign: "center",
+          padding: 24,
         }}
       >
-        <h1 style={{ margin: 0 }}>Humor Project</h1>
-
-        <nav style={{ display: "flex", gap: 20 }}>
-          <Link href="/rate">Rate Captions</Link>
-          <Link href="/login">Login</Link>
-        </nav>
-      </header>
-
-      {/* Image List */}
-      <section>
-        <h2 style={{ marginBottom: 20 }}>Public Images</h2>
-
-        {rows.map((img) => (
+        <div>
           <div
-            key={img.id}
             style={{
-              marginBottom: 40,
-              paddingBottom: 20,
-              borderBottom: "1px solid #eee",
+              fontSize: 86,
+              letterSpacing: 10,
+              fontWeight: 900,
+              color: "rgba(255,255,255,0.92)",
+              textShadow: "0 0 18px rgba(255,255,255,0.18)",
+              marginBottom: 18,
+              lineHeight: 0.95,
             }}
           >
-            <img
-              src={img.url}
-              alt={img.image_description}
-              style={{
-                maxWidth: "100%",
-                borderRadius: 12,
-                marginBottom: 12,
-              }}
-            />
-            <p style={{ lineHeight: 1.6 }}>{img.image_description}</p>
+            HELLO WORLD
           </div>
-        ))}
-      </section>
-    </main>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            <Link
+              href="/captions"
+              style={{
+                padding: "12px 18px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
+                textDecoration: "none",
+                fontSize: 14,
+              }}
+            >
+              Continue to Captions
+            </Link>
+
+            {signedIn ? (
+              <Link
+                href="/rate"
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.02)",
+                  color: "rgba(255,255,255,0.92)",
+                  textDecoration: "none",
+                  fontSize: 14,
+                }}
+              >
+                Go to Ratings
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(255,255,255,0.02)",
+                  color: "rgba(255,255,255,0.92)",
+                  textDecoration: "none",
+                  fontSize: 14,
+                }}
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    </AppShell>
   );
 }
