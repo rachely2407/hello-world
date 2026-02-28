@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import AppShell from "@/app/components/AppShell";
 
-
 const API_BASE = "https://api.almostcrackd.ai";
 
 const SUPPORTED_TYPES = new Set([
@@ -32,12 +31,10 @@ function sleep(ms: number) {
 }
 
 function jitter(ms: number) {
-  // add +/- 15% randomness to reduce synchronized retries
   const delta = ms * 0.15;
   return ms + (Math.random() * 2 - 1) * delta;
 }
 
-/** Read response body safely (json when possible, otherwise text) */
 async function readBody(res: Response): Promise<unknown> {
   const ct = res.headers.get("content-type") || "";
   const text = await res.text();
@@ -52,7 +49,6 @@ async function readBody(res: Response): Promise<unknown> {
   return text;
 }
 
-/** Turn any unknown value into a readable string (prevents [object Object]) */
 function pretty(v: unknown) {
   if (typeof v === "string") return v;
   try {
@@ -62,10 +58,20 @@ function pretty(v: unknown) {
   }
 }
 
-/** Try to extract a CloudFront Request ID from the HTML */
 function extractCloudFrontRequestId(html: string): string | null {
   const m = html.match(/Request ID:\s*([A-Za-z0-9_\-+/=&#x;]+)/i);
   return m?.[1]?.replace(/&#x3D;/g, "=") ?? null;
+}
+
+/** UI helpers */
+function stageIndex(stage: Stage) {
+  if (stage === "presign") return 1;
+  if (stage === "upload") return 2;
+  if (stage === "register") return 3;
+  if (stage === "captions") return 4;
+  if (stage === "done") return 5;
+  if (stage === "error") return 0;
+  return 0;
 }
 
 export default function PipelinePage() {
@@ -136,7 +142,6 @@ export default function PipelinePage() {
     setCaptions(null);
     setRawCaptionsResponse(null);
     setDebugLog("");
-    // note: we DO NOT clear imageId/cdnUrl here because for retries we want to keep them
   }
 
   async function generateCaptionsOnly(existingImageId: string) {
@@ -167,7 +172,6 @@ export default function PipelinePage() {
         if (!res.ok) {
           const retryable = res.status === 504 || res.status === 502 || res.status === 503;
 
-          // CloudFront 504 returns HTML as string
           if (typeof body === "string" && body.includes("504 Gateway Timeout")) {
             const reqId = extractCloudFrontRequestId(body);
             log(
@@ -180,19 +184,15 @@ export default function PipelinePage() {
           }
 
           if (retryable && attempt < maxAttempts) {
-            // gentler backoff for overloaded service
             const base = 1500 * attempt;
             await sleep(jitter(base));
             continue;
           }
 
-          // Not retryable or out of attempts
           throw new Error(`Generate captions failed (${res.status}):\n${pretty(body)}`);
         }
 
-        // success
         setRawCaptionsResponse(body);
-
         const arr = Array.isArray(body) ? body : [body];
         setCaptions(arr);
 
@@ -318,8 +318,8 @@ export default function PipelinePage() {
       setImageId(newImageId);
       log(`Step3 imageId=${newImageId}`);
 
-      // Step 4: captions (retry)
-      setBusy(false); // let generateCaptionsOnly manage busy/stage itself
+      // Step 4: captions
+      setBusy(false);
       await generateCaptionsOnly(newImageId);
     } catch (e: any) {
       setStage("error");
@@ -329,352 +329,483 @@ export default function PipelinePage() {
     }
   };
 
-  const StepPill = ({ n, label }: { n: number; label: string }) => {
-    const idx =
-      stage === "presign" ? 1 : stage === "upload" ? 2 : stage === "register" ? 3 : stage === "captions" ? 4 : 0;
-    const active = idx === n;
-    const completed = idx > n || stage === "done";
+  const idx = stageIndex(stage);
+  const progress = idx === 0 ? 0 : Math.min(100, Math.round(((idx - 1) / 4) * 100));
 
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "10px 12px",
-          borderRadius: 999,
-          border: "1px solid #eaeaea",
-          background: active ? "#f5f7ff" : completed ? "#f6fff7" : "#fafafa",
-          color: "#111",
-          fontSize: 13,
-          fontWeight: 600,
-        }}
-      >
-        <span
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 999,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "1px solid #ddd",
-            background: completed ? "#eaffee" : "#fff",
-            fontSize: 12,
-          }}
-        >
-          {completed ? "✓" : n}
-        </span>
-        <span style={{ opacity: 0.9 }}>{label}</span>
-      </div>
-    );
-  };
-
-  return (
-    <main
+  const Card = ({ children }: { children: React.ReactNode }) => (
+    <div
       style={{
-        maxWidth: 980,
-        margin: "40px auto",
-        padding: 24,
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        borderRadius: 22,
+        border: "1px solid rgba(255,255,255,0.10)",
+        background: "rgba(0,0,0,0.35)",
+        boxShadow: "0 18px 70px rgba(0,0,0,0.45)",
+        overflow: "hidden",
       }}
     >
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 18,
-        }}
-      >
-        <div>
-          <h1 style={{ margin: 0, fontSize: 24 }}>Upload → Generate Captions</h1>
-          <p style={{ margin: "6px 0 0", color: "#555" }}>
-            Pick an image, click the big button, and if captions time out you can retry without re-uploading.
-          </p>
-        </div>
+      {children}
+    </div>
+  );
 
-        <nav style={{ display: "flex", gap: 16 }}>
-          <a href="/" style={{ color: "#111", textDecoration: "none" }}>
-            Home
-          </a>
-          <a href="/rate" style={{ color: "#111", textDecoration: "none" }}>
-            Rate
-          </a>
-          <a href="/login" style={{ color: "#111", textDecoration: "none" }}>
-            Login
-          </a>
-        </nav>
-      </header>
+  const Pill = ({ label, active }: { label: string; active: boolean }) => (
+    <div
+      style={{
+        padding: "8px 12px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.14)",
+        background: active
+          ? "linear-gradient(135deg, rgba(59,130,246,0.22), rgba(239,68,68,0.18))"
+          : "rgba(255,255,255,0.05)",
+        color: "rgba(255,255,255,0.88)",
+        fontSize: 12,
+        fontWeight: 700,
+        letterSpacing: 0.4,
+      }}
+    >
+      {label}
+    </div>
+  );
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-        <StepPill n={1} label="Presign URL" />
-        <StepPill n={2} label="Upload Bytes" />
-        <StepPill n={3} label="Register Image" />
-        <StepPill n={4} label="Generate Captions" />
-      </div>
-
-      <div style={{ marginBottom: 16, color: "#444" }}>
-        Status: <strong>{statusText}</strong>
-      </div>
-
-      {error && (
-        <div
-          style={{
-            padding: 14,
-            border: "1px solid #f5c2c2",
-            background: "#fff5f5",
-            borderRadius: 12,
-            marginBottom: 16,
-            whiteSpace: "pre-wrap",
-            lineHeight: 1.35,
-          }}
-        >
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>Error</div>
-          <div style={{ marginBottom: 10, color: "#444" }}>
-            If this is a <strong>504 Gateway Timeout</strong>, the server is overloaded.
-            Your upload/registration likely succeeded — try the retry button below.
-          </div>
-          <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
-            {error}
-          </div>
-        </div>
-      )}
-
-      {/* Upload card */}
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.1fr 0.9fr",
-          gap: 18,
-          padding: 18,
-          border: "1px solid #eee",
-          borderRadius: 16,
-          marginBottom: 18,
-          background: "#fff",
-        }}
-      >
-        <div>
-          <div
-            style={{
-              border: "2px dashed #d7d7d7",
-              borderRadius: 16,
-              padding: 18,
-              background: "#fafafa",
-            }}
-          >
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>1) Choose an image</div>
-            <div style={{ color: "#666", fontSize: 13, marginBottom: 12 }}>
-              Then click <strong>Upload & Generate</strong>. If captions time out, use the retry button.
-            </div>
-
-            <label
-              style={{
-                display: "inline-block",
-                padding: "10px 12px",
-                borderRadius: 12,
-                border: "1px solid #ddd",
-                background: "#fff",
-                cursor: busy ? "not-allowed" : "pointer",
-                fontWeight: 700,
-              }}
-            >
-              Choose File
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                disabled={busy}
-                style={{ display: "none" }}
-              />
-            </label>
-
-            <div style={{ marginTop: 12, color: "#555", fontSize: 13 }}>
-              {file ? (
-                <>
-                  <div>
-                    <strong>Selected:</strong> {file.name}
-                  </div>
-                  <div>
-                    <strong>Type:</strong> {file.type || "(unknown)"} • <strong>Size:</strong>{" "}
-                    {Math.round(file.size / 1024)} KB
-                  </div>
-                </>
-              ) : (
-                "No file selected yet."
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={runFullPipeline}
-            disabled={!file || busy}
-            style={{
-              marginTop: 14,
-              width: "100%",
-              padding: "14px 16px",
-              borderRadius: 14,
-              border: "1px solid #111",
-              background: busy ? "#f2f2f2" : "#111",
-              color: busy ? "#777" : "#fff",
-              fontWeight: 900,
-              fontSize: 15,
-              cursor: !file || busy ? "not-allowed" : "pointer",
-            }}
-          >
-            {busy ? "Working…" : "Upload & Generate Captions →"}
-          </button>
-
-          {/* New: retry-only button */}
-          <button
-            onClick={() => {
-              resetRunOutputs();
-              if (!imageId) {
-                setError("No imageId yet. Run Upload & Generate first.");
-                return;
-              }
-              generateCaptionsOnly(imageId);
-            }}
-            disabled={!imageId || busy}
-            style={{
-              marginTop: 10,
-              width: "100%",
-              padding: "12px 16px",
-              borderRadius: 14,
-              border: "1px solid #ddd",
-              background: busy ? "#f8f8f8" : "#fff",
-              color: "#111",
-              fontWeight: 800,
-              fontSize: 14,
-              cursor: !imageId || busy ? "not-allowed" : "pointer",
-            }}
-          >
-            Generate captions again (no re-upload)
-          </button>
-
-          <div style={{ marginTop: 10, color: "#777", fontSize: 12 }}>
-            Tip: if you see 504, wait ~5–15 seconds and click “Generate captions again”.
-          </div>
-        </div>
-
-        <div
-          style={{
-            border: "1px solid #eee",
-            borderRadius: 16,
-            padding: 14,
-            background: "#fff",
-          }}
-        >
-          <div style={{ fontWeight: 800, marginBottom: 10 }}>Preview</div>
-          {previewUrl ? (
-            <img
-              src={previewUrl}
-              alt="preview"
-              style={{ width: "100%", borderRadius: 12, display: "block" }}
-            />
-          ) : (
+  return (
+    <AppShell title="Rachel's Project">
+      <div style={{ maxWidth: 1100, margin: "0 auto", paddingTop: 8 }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 18 }}>
+          <div>
             <div
               style={{
-                height: 220,
-                borderRadius: 12,
-                background: "#fafafa",
-                border: "1px dashed #ddd",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#888",
-                fontSize: 13,
-                textAlign: "center",
-                padding: 12,
+                fontSize: 44,
+                fontWeight: 900,
+                letterSpacing: 2,
+                margin: 0,
+                lineHeight: 1,
+                background: "linear-gradient(90deg, rgba(59,130,246,1), rgba(239,68,68,1))",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                textShadow: "0 0 22px rgba(255,255,255,0.08)",
               }}
             >
-              Pick an image to see a preview here.
+              Upload & Caption Pipeline
             </div>
-          )}
-        </div>
-      </section>
-
-      <section style={{ padding: 16, border: "1px solid #eee", borderRadius: 16 }}>
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>Results</h2>
-
-        <div style={{ marginBottom: 12, color: "#444", fontSize: 13, lineHeight: 1.4 }}>
-          <div>
-            <strong>cdnUrl:</strong>{" "}
-            {cdnUrl ? (
-              <a href={cdnUrl} target="_blank" rel="noreferrer">
-                {cdnUrl}
-              </a>
-            ) : (
-              "—"
-            )}
+            <div style={{ marginTop: 10, color: "rgba(255,255,255,0.72)", fontSize: 13, maxWidth: 760 }}>
+              Upload an image, register it, and generate captions. If the server times out (504), click{" "}
+              <strong style={{ color: "rgba(255,255,255,0.9)" }}>Generate again</strong> — no re-upload needed.
+            </div>
           </div>
-          <div>
-            <strong>imageId:</strong> {imageId ?? "—"}
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Pill label="1 Presign" active={stage === "presign"} />
+            <Pill label="2 Upload" active={stage === "upload"} />
+            <Pill label="3 Register" active={stage === "register"} />
+            <Pill label="4 Captions" active={stage === "captions"} />
+            <Pill label="Done" active={stage === "done"} />
           </div>
         </div>
 
-        {captions && (
-          <>
-            <h3 style={{ marginTop: 14, fontSize: 16 }}>Captions</h3>
-            {captions.length === 0 ? (
-              <p style={{ color: "#777" }}>Captions still generating. Try again in a few seconds.</p>
-            ) : (
-              <ol style={{ paddingLeft: 18 }}>
-                {captions.map((c, idx) => {
-                  const text = c?.content ?? c?.caption ?? c?.text ?? c?.result ?? null;
-                  return (
-                    <li key={idx} style={{ marginBottom: 10 }}>
-                      {text ? (
-                        <span>{String(text)}</span>
-                      ) : (
-                        <pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>
-                          {JSON.stringify(c, null, 2)}
-                        </pre>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </>
+        {/* Status bar */}
+        <div style={{ marginTop: 18 }}>
+          <Card>
+            <div style={{ padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 13 }}>
+                  <span style={{ color: "rgba(255,255,255,0.55)" }}>Status:</span>{" "}
+                  <strong style={{ color: "rgba(255,255,255,0.92)" }}>{statusText}</strong>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  {cdnUrl ? (
+                    <a
+                      href={cdnUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        fontSize: 12,
+                        color: "rgba(255,255,255,0.8)",
+                        textDecoration: "none",
+                        padding: "8px 10px",
+                        borderRadius: 12,
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        background: "rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      Open CDN
+                    </a>
+                  ) : null}
+
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.7)",
+                      padding: "8px 10px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(255,255,255,0.04)",
+                    }}
+                    title={imageId ?? ""}
+                  >
+                    imageId: {imageId ? `${imageId.slice(0, 8)}…` : "—"}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 12,
+                  height: 8,
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.08)",
+                  overflow: "hidden",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${progress}%`,
+                    background: "linear-gradient(90deg, rgba(59,130,246,1), rgba(239,68,68,1))",
+                    transition: "width 250ms ease",
+                  }}
+                />
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div style={{ marginTop: 14 }}>
+            <Card>
+              <div
+                style={{
+                  padding: 16,
+                  background: "linear-gradient(135deg, rgba(239,68,68,0.18), rgba(59,130,246,0.08))",
+                }}
+              >
+                <div style={{ fontWeight: 900, letterSpacing: 0.6, marginBottom: 8 }}>Error</div>
+                <div style={{ color: "rgba(255,255,255,0.78)", fontSize: 13, marginBottom: 10, lineHeight: 1.4 }}>
+                  If this is a <strong style={{ color: "rgba(255,255,255,0.92)" }}>504 Gateway Timeout</strong>, the API
+                  is overloaded. Your upload/registration likely succeeded — try{" "}
+                  <strong style={{ color: "rgba(255,255,255,0.92)" }}>Generate captions again</strong>.
+                </div>
+                <pre
+                  style={{
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.9)",
+                    background: "rgba(0,0,0,0.35)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 14,
+                    padding: 12,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {error}
+                </pre>
+              </div>
+            </Card>
+          </div>
         )}
 
-        {!captions && <p style={{ color: "#777" }}>No captions yet.</p>}
+        {/* Main grid */}
+        <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 16 }}>
+          {/* Left: upload */}
+          <Card>
+            <div style={{ padding: 18 }}>
+              <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+                1) Select an image
+              </div>
 
-        {rawCaptionsResponse && (
-          <>
-            <h3 style={{ marginTop: 18, fontSize: 14 }}>Raw API response (debug)</h3>
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                fontSize: 12,
-                background: "#fafafa",
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #eee",
-              }}
-            >
-              {JSON.stringify(rawCaptionsResponse, null, 2)}
-            </pre>
-          </>
-        )}
+              {/* Dropzone-ish box */}
+              <label
+                style={{
+                  display: "block",
+                  cursor: busy ? "not-allowed" : "pointer",
+                }}
+              >
+                <div
+                  style={{
+                    borderRadius: 20,
+                    border: "1px dashed rgba(255,255,255,0.22)",
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))",
+                    padding: 18,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <div>
+                      <div style={{ fontWeight: 900, fontSize: 16, color: "rgba(255,255,255,0.92)" }}>
+                        Click to choose a file
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
+                        Supported: JPG / PNG / WEBP / GIF / HEIC
+                      </div>
+                    </div>
 
-        <h3 style={{ marginTop: 18, fontSize: 14 }}>Debug log</h3>
-        <pre
-          style={{
-            whiteSpace: "pre-wrap",
-            fontSize: 12,
-            background: "#0b0b0b",
-            color: "#eaeaea",
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #222",
-            lineHeight: 1.35,
-          }}
-        >
-          {debugLog || "—"}
-        </pre>
-      </section>
-    </main>
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.16)",
+                        background: "rgba(255,255,255,0.05)",
+                        color: "rgba(255,255,255,0.88)",
+                        fontSize: 12,
+                        fontWeight: 800,
+                        letterSpacing: 0.4,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Browse →
+                    </div>
+                  </div>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    disabled={busy}
+                    style={{ display: "none" }}
+                  />
+
+                  <div style={{ marginTop: 14, color: "rgba(255,255,255,0.72)", fontSize: 12 }}>
+                    {file ? (
+                      <>
+                        <div>
+                          <strong style={{ color: "rgba(255,255,255,0.92)" }}>Selected:</strong> {file.name}
+                        </div>
+                        <div style={{ marginTop: 4 }}>
+                          <strong style={{ color: "rgba(255,255,255,0.92)" }}>Type:</strong> {file.type || "(unknown)"} •{" "}
+                          <strong style={{ color: "rgba(255,255,255,0.92)" }}>Size:</strong>{" "}
+                          {Math.round(file.size / 1024)} KB
+                        </div>
+                      </>
+                    ) : (
+                      "No file selected yet."
+                    )}
+                  </div>
+                </div>
+              </label>
+
+              {/* CTA buttons */}
+              <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+                <button
+                  onClick={runFullPipeline}
+                  disabled={!file || busy}
+                  style={{
+                    width: "100%",
+                    padding: "14px 16px",
+                    borderRadius: 16,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: busy
+                      ? "rgba(255,255,255,0.06)"
+                      : "linear-gradient(90deg, rgba(59,130,246,1), rgba(239,68,68,1))",
+                    color: busy ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.95)",
+                    fontWeight: 900,
+                    fontSize: 14,
+                    letterSpacing: 0.6,
+                    cursor: !file || busy ? "not-allowed" : "pointer",
+                    boxShadow: busy ? "none" : "0 18px 55px rgba(0,0,0,0.45)",
+                  }}
+                >
+                  {busy ? "Working…" : "UPLOAD + GENERATE CAPTIONS →"}
+                </button>
+
+                <button
+                  onClick={() => {
+                    resetRunOutputs();
+                    if (!imageId) {
+                      setError("No imageId yet. Run Upload + Generate first.");
+                      return;
+                    }
+                    generateCaptionsOnly(imageId);
+                  }}
+                  disabled={!imageId || busy}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: 16,
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "rgba(255,255,255,0.9)",
+                    fontWeight: 850,
+                    fontSize: 13,
+                    letterSpacing: 0.4,
+                    cursor: !imageId || busy ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Generate captions again (no re-upload)
+                </button>
+
+                <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, lineHeight: 1.4 }}>
+                  Tip: If you see 504, wait ~5–15 seconds and click “Generate captions again”.
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Right: preview + results */}
+          <div style={{ display: "grid", gap: 16 }}>
+            <Card>
+              <div style={{ padding: 18 }}>
+                <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+                  Preview
+                </div>
+
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="preview"
+                    style={{
+                      width: "100%",
+                      borderRadius: 18,
+                      display: "block",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(255,255,255,0.02)",
+                      maxHeight: 380,
+                      objectFit: "contain",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      height: 260,
+                      borderRadius: 18,
+                      border: "1px dashed rgba(255,255,255,0.18)",
+                      background: "rgba(255,255,255,0.02)",
+                      display: "grid",
+                      placeItems: "center",
+                      color: "rgba(255,255,255,0.55)",
+                      fontSize: 13,
+                      textAlign: "center",
+                      padding: 12,
+                    }}
+                  >
+                    Pick an image to preview it here.
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <Card>
+              <div style={{ padding: 18 }}>
+                <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+                  Output
+                </div>
+
+                <div style={{ display: "grid", gap: 10, color: "rgba(255,255,255,0.78)", fontSize: 13 }}>
+                  <div>
+                    <span style={{ color: "rgba(255,255,255,0.55)" }}>cdnUrl:</span>{" "}
+                    {cdnUrl ? (
+                      <a href={cdnUrl} target="_blank" rel="noreferrer" style={{ color: "rgba(255,255,255,0.9)" }}>
+                        {cdnUrl}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                  <div>
+                    <span style={{ color: "rgba(255,255,255,0.55)" }}>imageId:</span> {imageId ?? "—"}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontWeight: 900, marginBottom: 8 }}>Captions</div>
+
+                  {captions ? (
+                    captions.length === 0 ? (
+                      <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>
+                        Captions still generating. Try again in a few seconds.
+                      </div>
+                    ) : (
+                      <ol style={{ paddingLeft: 18, margin: 0, color: "rgba(255,255,255,0.9)" }}>
+                        {captions.map((c, idx) => {
+                          const text = c?.content ?? c?.caption ?? c?.text ?? c?.result ?? null;
+                          return (
+                            <li key={idx} style={{ marginBottom: 10, lineHeight: 1.35 }}>
+                              {text ? (
+                                <span>{String(text)}</span>
+                              ) : (
+                                <pre
+                                  style={{
+                                    whiteSpace: "pre-wrap",
+                                    fontSize: 12,
+                                    margin: 0,
+                                    color: "rgba(255,255,255,0.85)",
+                                    background: "rgba(0,0,0,0.30)",
+                                    border: "1px solid rgba(255,255,255,0.10)",
+                                    borderRadius: 14,
+                                    padding: 10,
+                                  }}
+                                >
+                                  {JSON.stringify(c, null, 2)}
+                                </pre>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )
+                  ) : (
+                    <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>No captions yet.</div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Debug */}
+        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <Card>
+            <div style={{ padding: 18 }}>
+              <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+                Debug Log
+              </div>
+              <pre
+                style={{
+                  margin: 0,
+                  whiteSpace: "pre-wrap",
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.88)",
+                  background: "rgba(0,0,0,0.35)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 16,
+                  padding: 12,
+                  lineHeight: 1.35,
+                  maxHeight: 260,
+                  overflow: "auto",
+                }}
+              >
+                {debugLog || "—"}
+              </pre>
+            </div>
+          </Card>
+
+          <Card>
+            <div style={{ padding: 18 }}>
+              <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+                Raw API Response
+              </div>
+              <pre
+                style={{
+                  margin: 0,
+                  whiteSpace: "pre-wrap",
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.88)",
+                  background: "rgba(0,0,0,0.35)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 16,
+                  padding: 12,
+                  lineHeight: 1.35,
+                  maxHeight: 260,
+                  overflow: "auto",
+                }}
+              >
+                {rawCaptionsResponse ? JSON.stringify(rawCaptionsResponse, null, 2) : "—"}
+              </pre>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </AppShell>
   );
 }

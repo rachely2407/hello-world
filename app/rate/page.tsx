@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/app/components/AppShell";
 import { supabase } from "@/lib/supabaseClient";
@@ -8,11 +8,31 @@ import { supabase } from "@/lib/supabaseClient";
 type VoteItem = {
   caption_id: string;
   caption_content: string;
+  image_id: string | null;
   image_url: string | null;
+};
+
+type CaptionRow = {
+  id: string;
+  content: string;
+  image_id: string | null;
+};
+
+type ImageRow = {
+  id: string;
+  url: string | null;
+  is_public: boolean | null;
 };
 
 function pickRandom<T>(arr: T[]) {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function isDuplicateVoteError(err: any) {
+  return (
+    err?.code === "23505" ||
+    String(err?.message || "").toLowerCase().includes("duplicate")
+  );
 }
 
 export default function RatePage() {
@@ -21,7 +41,6 @@ export default function RatePage() {
   const [authed, setAuthed] = useState(false);
   const [mode, setMode] = useState<"intro" | "voting">("intro");
   const [status, setStatus] = useState<string | null>(null);
-
   const [item, setItem] = useState<VoteItem | null>(null);
 
   // auth gate
@@ -39,45 +58,89 @@ export default function RatePage() {
 
   const loadNext = async () => {
     setStatus("Loading next…");
+    setItem(null);
 
-    // Try best-case: captions has image_id and FK to images
-    // If your FK is set, this works:
-    // select("id, content, image:images(url)") requires relationship
-    const { data, error } = await supabase
+    // 1) Load candidate captions
+    const { data: capData, error: capErr } = await supabase
       .from("captions")
-      .select("id, content, image_id, images(url)")
-      .limit(50);
+      .select("id, content, image_id")
+      .limit(80);
 
-    if (error) {
-      setStatus(`Error loading captions: ${error.message}`);
-      setItem(null);
+    if (capErr) {
+      console.log("❌ captions select error:", capErr);
+      setStatus(`Error loading captions: ${capErr.message}`);
       return;
     }
 
-    const rows = (data as any[]) || [];
-    if (rows.length === 0) {
+    const captions: CaptionRow[] = (capData as any[]) || [];
+    if (captions.length === 0) {
       setStatus("No captions found.");
-      setItem(null);
       return;
     }
 
-    const r = pickRandom(rows);
+    // Keep only captions that have an image_id
+    const withImageId = captions.filter((c) => !!c.image_id);
+    if (withImageId.length === 0) {
+      setStatus("Captions exist, but none have image_id.");
+      console.log("⚠️ captions found, but image_id is null for all.");
+      return;
+    }
 
-    // Handle both shapes:
-    // - images: { url: ... }
-    // - images: [{ url: ... }]
-    const imgRel = r.images;
-    const url =
-      (imgRel && typeof imgRel === "object" && "url" in imgRel && imgRel.url) ||
-      (Array.isArray(imgRel) && imgRel[0]?.url) ||
-      null;
+    // 2) Load matching images in one query (NO join dependency)
+    const imageIds = Array.from(
+      new Set(withImageId.map((c) => c.image_id!).filter(Boolean))
+    );
 
-    setItem({
-      caption_id: r.id,
-      caption_content: r.content,
-      image_url: url,
+    const { data: imgData, error: imgErr } = await supabase
+      .from("images")
+      .select("id, url, is_public")
+      .in("id", imageIds);
+
+    if (imgErr) {
+      console.log("❌ images select error:", imgErr);
+      setStatus(`Error loading images: ${imgErr.message}`);
+      return;
+    }
+
+    const images: ImageRow[] = (imgData as any[]) || [];
+    const byId = new Map<string, ImageRow>();
+    for (const img of images) byId.set(img.id, img);
+
+    // 3) Build candidates that actually have a URL
+    const candidates: VoteItem[] = withImageId.map((c) => {
+      const img = c.image_id ? byId.get(c.image_id) : undefined;
+      const url = img?.url ?? null;
+
+      return {
+        caption_id: c.id,
+        caption_content: c.content,
+        image_id: c.image_id ?? null,
+        image_url: url,
+      };
     });
 
+    const usable = candidates.filter((x) => !!x.image_url);
+
+    if (usable.length === 0) {
+      setStatus("No images with a usable url found. Check images.url values.");
+      console.log("⚠️ No usable image_url resolved.", {
+        captions_count: captions.length,
+        withImageId_count: withImageId.length,
+        images_returned: images.length,
+        sample_image: images[0],
+      });
+      return;
+    }
+
+    const chosen = pickRandom(usable);
+
+    console.log("🎯 picked:", {
+      caption_id: chosen.caption_id,
+      image_id: chosen.image_id,
+      image_url: chosen.image_url,
+    });
+
+    setItem(chosen);
     setStatus(null);
   };
 
@@ -86,7 +149,7 @@ export default function RatePage() {
     await loadNext();
   };
 
-  const vote = async (voteValue: number) => {
+  const vote = async (voteValue: 1 | -1) => {
     if (!item) return;
 
     setStatus("Saving vote…");
@@ -101,21 +164,35 @@ export default function RatePage() {
 
     const now = new Date().toISOString();
 
-    const { error } = await supabase.from("caption_votes").insert({
+    const { error: insertErr } = await supabase.from("caption_votes").insert({
       caption_id: item.caption_id,
       profile_id: uid,
-      vote_value: voteValue, // 👍 1, 👎 -1
+      vote_value: voteValue,
       created_datetime_utc: now,
       modified_datetime_utc: now,
     });
 
-    if (error) {
-      setStatus(`Vote failed: ${error.message}`);
-      return;
+    if (insertErr) {
+      if (isDuplicateVoteError(insertErr)) {
+        const { error: updateErr } = await supabase
+          .from("caption_votes")
+          .update({ vote_value: voteValue, modified_datetime_utc: now })
+          .eq("caption_id", item.caption_id)
+          .eq("profile_id", uid);
+
+        if (updateErr) {
+          setStatus(`Vote update failed: ${updateErr.message}`);
+          return;
+        }
+        setStatus("Vote updated ✅");
+      } else {
+        setStatus(`Vote failed: ${insertErr.message}`);
+        return;
+      }
+    } else {
+      setStatus("Vote saved ✅");
     }
 
-    setStatus("Vote saved ✅");
-    // load next after a tiny delay so user sees confirmation
     setTimeout(() => {
       loadNext();
     }, 350);
@@ -179,7 +256,6 @@ export default function RatePage() {
                 gap: 18,
               }}
             >
-              {/* 👎 */}
               <div style={{ display: "grid", placeItems: "center" }}>
                 <button
                   onClick={() => vote(-1)}
@@ -200,7 +276,6 @@ export default function RatePage() {
                 </button>
               </div>
 
-              {/* Card */}
               <div
                 style={{
                   borderRadius: 22,
@@ -239,7 +314,7 @@ export default function RatePage() {
                       padding: 12,
                     }}
                   >
-                    (No image found for this caption — check captions.image_id FK to images)
+                    (No image found — open DevTools Console and check logs)
                   </div>
                 )}
 
@@ -262,7 +337,6 @@ export default function RatePage() {
                 )}
               </div>
 
-              {/* 👍 */}
               <div style={{ display: "grid", placeItems: "center" }}>
                 <button
                   onClick={() => vote(1)}

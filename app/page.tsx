@@ -40,7 +40,7 @@ export default function HomePage() {
               lineHeight: 0.95,
             }}
           >
-            HELLO WORLD
+            MEME THE WORLD
           </div>
 
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
