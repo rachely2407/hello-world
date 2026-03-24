@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/app/components/AppShell";
 import { supabase } from "@/lib/supabaseClient";
@@ -43,7 +43,6 @@ export default function RatePage() {
   const [status, setStatus] = useState<string | null>(null);
   const [item, setItem] = useState<VoteItem | null>(null);
 
-  // auth gate
   useEffect(() => {
     const init = async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -60,7 +59,6 @@ export default function RatePage() {
     setStatus("Loading next…");
     setItem(null);
 
-    // 1) Load candidate captions
     const { data: capData, error: capErr } = await supabase
       .from("captions")
       .select("id, content, image_id")
@@ -78,7 +76,6 @@ export default function RatePage() {
       return;
     }
 
-    // Keep only captions that have an image_id
     const withImageId = captions.filter((c) => !!c.image_id);
     if (withImageId.length === 0) {
       setStatus("Captions exist, but none have image_id.");
@@ -86,7 +83,6 @@ export default function RatePage() {
       return;
     }
 
-    // 2) Load matching images in one query (NO join dependency)
     const imageIds = Array.from(
       new Set(withImageId.map((c) => c.image_id!).filter(Boolean))
     );
@@ -106,7 +102,6 @@ export default function RatePage() {
     const byId = new Map<string, ImageRow>();
     for (const img of images) byId.set(img.id, img);
 
-    // 3) Build candidates that actually have a URL
     const candidates: VoteItem[] = withImageId.map((c) => {
       const img = c.image_id ? byId.get(c.image_id) : undefined;
       const url = img?.url ?? null;
@@ -162,21 +157,22 @@ export default function RatePage() {
       return;
     }
 
-    const now = new Date().toISOString();
-
     const { error: insertErr } = await supabase.from("caption_votes").insert({
       caption_id: item.caption_id,
       profile_id: uid,
       vote_value: voteValue,
-      created_datetime_utc: now,
-      modified_datetime_utc: now,
+      created_by_user_id: uid,
+      modified_by_user_id: uid,
     });
 
     if (insertErr) {
       if (isDuplicateVoteError(insertErr)) {
         const { error: updateErr } = await supabase
           .from("caption_votes")
-          .update({ vote_value: voteValue, modified_datetime_utc: now })
+          .update({
+            vote_value: voteValue,
+            modified_by_user_id: uid,
+          })
           .eq("caption_id", item.caption_id)
           .eq("profile_id", uid);
 
@@ -202,7 +198,14 @@ export default function RatePage() {
 
   return (
     <AppShell title="Rachel's Project">
-      <div style={{ height: "100%", display: "grid", placeItems: "center", padding: 24 }}>
+      <div
+        style={{
+          height: "100%",
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+        }}
+      >
         {mode === "intro" ? (
           <div style={{ textAlign: "center" }}>
             <div
@@ -236,13 +239,26 @@ export default function RatePage() {
             </button>
 
             {status && (
-              <div style={{ marginTop: 14, color: "rgba(255,255,255,0.75)", fontSize: 13 }}>
+              <div
+                style={{
+                  marginTop: 14,
+                  color: "rgba(255,255,255,0.75)",
+                  fontSize: 13,
+                }}
+              >
                 {status}
               </div>
             )}
           </div>
         ) : (
-          <div style={{ width: "100%", maxWidth: 860, display: "grid", placeItems: "center" }}>
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 860,
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
             <div
               style={{
                 width: "100%",
@@ -331,7 +347,13 @@ export default function RatePage() {
                 </div>
 
                 {status && (
-                  <div style={{ marginTop: 12, color: "rgba(255,255,255,0.65)", fontSize: 12 }}>
+                  <div
+                    style={{
+                      marginTop: 12,
+                      color: "rgba(255,255,255,0.65)",
+                      fontSize: 12,
+                    }}
+                  >
                     {status}
                   </div>
                 )}
