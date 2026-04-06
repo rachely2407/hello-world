@@ -10,9 +10,22 @@ type Props = {
   children: React.ReactNode;
 };
 
+const palette = {
+  red: "#d9362b",
+  blue: "#1f5eff",
+  yellow: "#f2c230",
+  black: "#111111",
+  paper: "var(--paper)",
+  paperStrong: "var(--paper-strong)",
+  line: "var(--line)",
+  textMuted: "var(--ink-muted)",
+  foreground: "var(--foreground)",
+};
+
 export default function AppShell({ title = "Rachel's Project", children }: Props) {
   const pathname = usePathname();
   const [signedIn, setSignedIn] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
 
   useEffect(() => {
     const init = async () => {
@@ -28,8 +41,34 @@ export default function AppShell({ title = "Rachel's Project", children }: Props
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem("theme");
+    if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "system") {
+      setTheme(storedTheme);
+      if (storedTheme === "system") {
+        delete document.documentElement.dataset.theme;
+      } else {
+        document.documentElement.dataset.theme = storedTheme;
+      }
+      return;
+    }
+
+    setTheme("system");
+    delete document.documentElement.dataset.theme;
+  }, []);
+
   const signOut = async () => {
     await supabase.auth.signOut();
+  };
+
+  const applyTheme = (nextTheme: "light" | "dark" | "system") => {
+    setTheme(nextTheme);
+    if (nextTheme === "system") {
+      delete document.documentElement.dataset.theme;
+    } else {
+      document.documentElement.dataset.theme = nextTheme;
+    }
+    window.localStorage.setItem("theme", nextTheme);
   };
 
   const NavItem = ({ href, label, kbd }: { href: string; label: string; kbd: string }) => {
@@ -41,33 +80,29 @@ export default function AppShell({ title = "Rachel's Project", children }: Props
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 12px",
-          borderRadius: 16,
-          border: active ? "1px solid rgba(255,255,255,0.18)" : "1px solid rgba(255,255,255,0.10)",
-          background: active
-            ? "linear-gradient(135deg, rgba(59,130,246,0.20), rgba(239,68,68,0.18))"
-            : "rgba(255,255,255,0.05)",
-          color: "rgba(255,255,255,0.92)",
+          padding: "14px 16px",
+          borderRadius: 0,
+          border: `2px solid ${palette.black}`,
+          background: active ? palette.yellow : palette.paper,
+          color: palette.foreground,
           textDecoration: "none",
           fontSize: 14,
-          boxShadow: active ? "0 18px 50px rgba(0,0,0,0.35)" : "none",
-          transition: "transform 140ms ease, background 140ms ease, border-color 140ms ease",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-1px)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(0px)";
+          fontWeight: 800,
+          letterSpacing: 0.8,
+          textTransform: "uppercase",
+          boxShadow: active ? "8px 8px 0 rgba(17,17,17,0.95)" : "4px 4px 0 rgba(17,17,17,0.22)",
         }}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span
+            aria-hidden
             style={{
-              width: 10,
-              height: 10,
-              borderRadius: 999,
-              background: active ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)",
-              boxShadow: active ? "0 0 16px rgba(255,255,255,0.25)" : "none",
+              width: 14,
+              height: 14,
+              borderRadius: active ? "50%" : 0,
+              background: active ? palette.red : palette.blue,
+              border: `2px solid ${palette.black}`,
+              flexShrink: 0,
             }}
           />
           {label}
@@ -76,12 +111,11 @@ export default function AppShell({ title = "Rachel's Project", children }: Props
         <span
           style={{
             fontSize: 11,
-            padding: "4px 8px",
-            borderRadius: 10,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(0,0,0,0.25)",
-            color: "rgba(255,255,255,0.75)",
-            letterSpacing: 0.6,
+            padding: "4px 7px",
+            border: `2px solid ${palette.black}`,
+            background: "var(--surface)",
+            color: palette.foreground,
+            letterSpacing: 1.2,
           }}
         >
           {kbd}
@@ -90,31 +124,23 @@ export default function AppShell({ title = "Rachel's Project", children }: Props
     );
   };
 
+  const actionStyle = {
+    padding: "10px 12px",
+    borderRadius: 0,
+    border: `2px solid ${palette.black}`,
+    background: "var(--surface)",
+    color: palette.foreground,
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 800,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.8,
+    textDecoration: "none",
+    boxShadow: "4px 4px 0 rgba(17,17,17,0.22)",
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background:
-          "radial-gradient(1100px 600px at 18% 10%, rgba(59,130,246,0.35), rgba(0,0,0,0) 60%), radial-gradient(900px 520px at 82% 16%, rgba(239,68,68,0.30), rgba(0,0,0,0) 62%), radial-gradient(700px 520px at 65% 85%, rgba(99,102,241,0.18), rgba(0,0,0,0) 60%), linear-gradient(180deg, #070816, #04040a 55%, #020207)",
-        color: "#fff",
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-      }}
-    >
-      {/* Ambient “grid + noise” overlay */}
-      <div
-        aria-hidden
-        style={{
-          position: "fixed",
-          inset: 0,
-          pointerEvents: "none",
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-          maskImage:
-            "radial-gradient(600px 600px at 55% 20%, rgba(0,0,0,1), rgba(0,0,0,0) 70%)",
-          opacity: 0.35,
-        }}
-      />
+    <div style={{ minHeight: "100vh", color: palette.foreground }}>
       <div
         aria-hidden
         style={{
@@ -122,101 +148,107 @@ export default function AppShell({ title = "Rachel's Project", children }: Props
           inset: 0,
           pointerEvents: "none",
           background:
-            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E\")",
-          opacity: 0.08,
-          mixBlendMode: "overlay",
+            "linear-gradient(90deg, transparent 0 12%, rgba(17,17,17,0.03) 12% 13%, transparent 13% 100%), linear-gradient(0deg, transparent 0 76%, rgba(17,17,17,0.035) 76% 77%, transparent 77% 100%)",
         }}
       />
-
       <div
+        className="app-shell-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "320px 1fr",
-          gap: 22,
-          padding: 22,
+          gridTemplateColumns: "280px minmax(0, 1fr)",
+          gap: 24,
+          padding: 24,
+          position: "relative",
+          zIndex: 1,
         }}
       >
-        {/* Sidebar */}
         <aside
           style={{
-            borderRadius: 26,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-            boxShadow:
-              "0 18px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.05) inset",
+            border: `3px solid ${palette.black}`,
+            background: palette.paper,
             padding: 18,
-            height: "calc(100vh - 44px)",
+            height: "calc(100vh - 48px)",
             position: "sticky",
-            top: 22,
+            top: 24,
             overflow: "hidden",
+            boxShadow: "12px 12px 0 rgba(17,17,17,0.92)",
           }}
         >
-          {/* “ticket stub” header */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: -36,
+              right: -20,
+              width: 118,
+              height: 118,
+              borderRadius: "50%",
+              background: palette.red,
+              border: `3px solid ${palette.black}`,
+            }}
+          />
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              bottom: 86,
+              left: -26,
+              width: 80,
+              height: 80,
+              background: palette.blue,
+              border: `3px solid ${palette.black}`,
+              transform: "rotate(18deg)",
+            }}
+          />
+
           <div
             style={{
-              borderRadius: 20,
-              padding: 14,
-              border: "1px dashed rgba(255,255,255,0.18)",
-              background:
-                "linear-gradient(135deg, rgba(59,130,246,0.18), rgba(239,68,68,0.16))",
               position: "relative",
-              marginBottom: 14,
+              border: `3px solid ${palette.black}`,
+              background: "var(--surface)",
+              padding: 16,
+              marginBottom: 16,
+              boxShadow: "8px 8px 0 rgba(17,17,17,0.18)",
             }}
           >
-            {/* punch holes */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                left: -10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 20,
-                height: 20,
-                borderRadius: 999,
-                background: "rgba(0,0,0,0.75)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            />
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                right: -10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 20,
-                height: 20,
-                borderRadius: 999,
-                background: "rgba(0,0,0,0.75)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            />
-
             <div
               style={{
                 fontSize: 12,
                 letterSpacing: 2,
                 textTransform: "uppercase",
-                fontWeight: 800,
-                color: "rgba(255,255,255,0.85)",
+                fontWeight: 900,
+                color: palette.textMuted,
+              }}
+            >
+              Studio
+            </div>
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 28,
+                lineHeight: 0.95,
+                fontWeight: 900,
+                maxWidth: 180,
+                textTransform: "uppercase",
+                color: palette.foreground,
               }}
             >
               {title}
             </div>
 
-            <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {["Next.js", "Supabase", "Vercel"].map((t) => (
+            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {["Next.js", "Supabase", "Vercel"].map((t, index) => (
                 <span
                   key={t}
                   style={{
-                    fontSize: 11,
-                    padding: "4px 8px",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(0,0,0,0.22)",
-                    color: "rgba(255,255,255,0.75)",
+                    fontSize: 10,
+                    padding: "5px 8px",
+                    border: `2px solid ${palette.black}`,
+                    background: [palette.yellow, "var(--surface)", palette.blue][index],
+                    color: index === 2 ? "#ffffff" : palette.foreground,
+                    fontWeight: 800,
+                    letterSpacing: 1,
+                    textTransform: "uppercase",
                   }}
                 >
                   {t}
@@ -225,134 +257,179 @@ export default function AppShell({ title = "Rachel's Project", children }: Props
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 12, position: "relative" }}>
             <NavItem href="/" label="Home" kbd="H" />
             <NavItem href="/captions" label="Captions" kbd="C" />
             <NavItem href="/rate" label="Ratings" kbd="R" />
             <NavItem href="/pipeline" label="Upload" kbd="U" />
           </div>
 
-          <div style={{ height: 16 }} />
-
-          {/* “status strip” */}
           <div
             style={{
-              marginTop: 12,
-              borderRadius: 20,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(0,0,0,0.28)",
-              padding: 12,
+              marginTop: 18,
+              border: `3px solid ${palette.black}`,
+              background: palette.paperStrong,
+              padding: 14,
+              position: "relative",
             }}
           >
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>Session</div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: palette.textMuted, textTransform: "uppercase", letterSpacing: 1.6 }}>
+              Session
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span
                   style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 999,
-                    background: signedIn ? "rgba(34,197,94,0.95)" : "rgba(239,68,68,0.95)",
-                    boxShadow: signedIn ? "0 0 16px rgba(34,197,94,0.25)" : "0 0 16px rgba(239,68,68,0.25)",
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    background: signedIn ? palette.blue : palette.red,
+                    border: `2px solid ${palette.black}`,
+                    flexShrink: 0,
                   }}
                 />
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 700 }}>
-                  {signedIn ? "Signed in" : "Signed out"}
+                <span style={{ fontSize: 13, color: palette.foreground, fontWeight: 800, textTransform: "uppercase" }}>
+                  {signedIn ? "Signed In" : "Signed Out"}
                 </span>
               </div>
 
               {signedIn ? (
-                <button
-                  onClick={signOut}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "rgba(255,255,255,0.92)",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                >
+                <button onClick={signOut} style={actionStyle}>
                   Sign out
                 </button>
               ) : (
-                <Link
-                  href="/login"
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "rgba(255,255,255,0.92)",
-                    textDecoration: "none",
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                >
+                <Link href="/login" style={actionStyle}>
                   Sign in
                 </Link>
               )}
             </div>
+
+            <div style={{ marginTop: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                {(["dark", "light", "system"] as const).map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => applyTheme(option)}
+                    style={{
+                      ...actionStyle,
+                      width: "100%",
+                      padding: "9px 8px",
+                      background: theme === option ? palette.yellow : "var(--surface)",
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* bottom “badge” */}
           <div
             style={{
-              marginTop: 14,
+              marginTop: 18,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              color: "rgba(255,255,255,0.55)",
-              fontSize: 12,
-              padding: "0 6px",
+              color: palette.foreground,
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
             }}
           >
-            <span style={{ letterSpacing: 1.2 }}>SPRING 2026</span>
-            <span style={{ letterSpacing: 1.2 }}>v1</span>
+            <span>Spring 2026</span>
+            <span>v1</span>
           </div>
         </aside>
 
-        {/* Main */}
         <main
           style={{
-            borderRadius: 26,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)), radial-gradient(950px 520px at 20% 20%, rgba(59,130,246,0.18), rgba(0,0,0,0) 62%), radial-gradient(950px 520px at 75% 30%, rgba(239,68,68,0.14), rgba(0,0,0,0) 64%)",
-            minHeight: "calc(100vh - 44px)",
+            border: `3px solid ${palette.black}`,
+            background: palette.paperStrong,
+            minHeight: "calc(100vh - 48px)",
             padding: 28,
-            boxShadow: "0 22px 90px rgba(0,0,0,0.60)",
             position: "relative",
             overflow: "hidden",
+            boxShadow: "14px 14px 0 rgba(17,17,17,0.92)",
           }}
         >
-          {/* floating “ribbon” top-right */}
           <div
             aria-hidden
             style={{
               position: "absolute",
-              top: 18,
-              right: -70,
-              transform: "rotate(18deg)",
-              padding: "10px 90px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "linear-gradient(135deg, rgba(239,68,68,0.16), rgba(59,130,246,0.16))",
-              color: "rgba(255,255,255,0.70)",
-              fontSize: 12,
+              top: 0,
+              right: 0,
+              width: 180,
+              height: 18,
+              background: palette.red,
+              borderLeft: `3px solid ${palette.black}`,
+              borderBottom: `3px solid ${palette.black}`,
+            }}
+          />
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: 26,
+              bottom: 18,
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              background: palette.yellow,
+              border: `3px solid ${palette.black}`,
+              opacity: 0.9,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: 24,
+              right: 28,
+              padding: "8px 12px",
+              border: `2px solid ${palette.black}`,
+              background: "var(--surface)",
+              fontSize: 11,
+              fontWeight: 800,
               letterSpacing: 2,
               textTransform: "uppercase",
-              boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
             }}
           >
-            HUMOR PROJECT
+            Humor Project
           </div>
 
           {children}
         </main>
       </div>
+
+      <style jsx global>{`
+        @media (max-width: 960px) {
+          .app-shell-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .app-shell-grid aside {
+            height: auto !important;
+            position: relative !important;
+            top: 0 !important;
+          }
+
+          .app-shell-grid main {
+            min-height: auto !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .app-shell-grid {
+            padding: 14px !important;
+            gap: 14px !important;
+          }
+
+          .app-shell-grid main,
+          .app-shell-grid aside {
+            padding: 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

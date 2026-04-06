@@ -29,32 +29,45 @@ export default function ProtectedPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        height: "70vh",
-        position: "relative",
+        minHeight: "100vh",
+        padding: 24,
       }}
     >
       <div
         style={{
-          width: 520,
-          padding: 40,
-          borderRadius: 28,
-          border: "1px solid rgba(255,255,255,0.12)",
-          background:
-            "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)), radial-gradient(800px 400px at 20% 20%, rgba(59,130,246,0.18), rgba(0,0,0,0) 60%), radial-gradient(800px 400px at 80% 40%, rgba(239,68,68,0.16), rgba(0,0,0,0) 60%)",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
-          textAlign: "center",
+          width: 560,
+          maxWidth: "100%",
+          padding: 32,
+          border: "3px solid #111111",
+          background: "rgba(255,255,255,0.96)",
+          boxShadow: "14px 14px 0 rgba(17,17,17,0.2)",
+          textAlign: "left",
+          position: "relative",
         }}
       >
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: -26,
+            right: 28,
+            width: 92,
+            height: 92,
+            borderRadius: "50%",
+            background: "#1f5eff",
+            border: "3px solid #111111",
+          }}
+        />
         <h1
           style={{
-            fontSize: 42,
+            fontSize: "clamp(2.4rem, 8vw, 4rem)",
             letterSpacing: 2,
-            marginBottom: 20,
-            background:
-              "linear-gradient(90deg, #3b82f6, #ef4444)",
-            WebkitBackgroundClip: "text",
-            color: "transparent",
-            fontWeight: 800,
+            marginBottom: 16,
+            color: "#111111",
+            fontWeight: 900,
+            lineHeight: 0.9,
+            textTransform: "uppercase",
+            marginTop: 0,
           }}
         >
           Signed In
@@ -62,20 +75,20 @@ export default function ProtectedPage() {
 
         <p
           style={{
-            fontSize: 16,
-            color: "rgba(255,255,255,0.75)",
-            marginBottom: 30,
+            fontSize: 15,
+            color: "rgba(17,17,17,0.72)",
+            marginBottom: 26,
           }}
         >
-          Authentication successful 🎉
+          Authentication successful.
         </p>
 
         <div
           style={{
-            height: 6,
+            height: 18,
             width: "100%",
-            borderRadius: 999,
-            background: "rgba(255,255,255,0.08)",
+            border: "3px solid #111111",
+            background: "#ffffff",
             overflow: "hidden",
           }}
         >
@@ -83,8 +96,7 @@ export default function ProtectedPage() {
             style={{
               height: "100%",
               width: "100%",
-              background:
-                "linear-gradient(90deg, #3b82f6, #ef4444)",
+              background: "linear-gradient(90deg, #d9362b 0 33%, #f2c230 33% 66%, #1f5eff 66% 100%)",
               animation: "progress 5s linear forwards",
             }}
           />
@@ -92,13 +104,14 @@ export default function ProtectedPage() {
 
         <p
           style={{
-            marginTop: 20,
-            fontSize: 13,
-            letterSpacing: 1,
-            color: "rgba(255,255,255,0.5)",
+            marginTop: 18,
+            fontSize: 12,
+            letterSpacing: 1.4,
+            color: "rgba(17,17,17,0.6)",
+            textTransform: "uppercase",
           }}
         >
-          Redirecting to home in 5 seconds...
+          Redirecting to home in 5 seconds
         </p>
       </div>
 

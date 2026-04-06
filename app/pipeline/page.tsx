@@ -74,6 +74,13 @@ function stageIndex(stage: Stage) {
   return 0;
 }
 
+const panelStyle = {
+  border: "3px solid #111111",
+  background: "var(--surface)",
+  boxShadow: "10px 10px 0 rgba(17,17,17,0.16)",
+  overflow: "hidden" as const,
+};
+
 export default function PipelinePage() {
   const router = useRouter();
 
@@ -335,11 +342,7 @@ export default function PipelinePage() {
   const Card = ({ children }: { children: React.ReactNode }) => (
     <div
       style={{
-        borderRadius: 22,
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "rgba(0,0,0,0.35)",
-        boxShadow: "0 18px 70px rgba(0,0,0,0.45)",
-        overflow: "hidden",
+        ...panelStyle,
       }}
     >
       {children}
@@ -349,16 +352,15 @@ export default function PipelinePage() {
   const Pill = ({ label, active }: { label: string; active: boolean }) => (
     <div
       style={{
-        padding: "8px 12px",
-        borderRadius: 999,
-        border: "1px solid rgba(255,255,255,0.14)",
-        background: active
-          ? "linear-gradient(135deg, rgba(59,130,246,0.22), rgba(239,68,68,0.18))"
-          : "rgba(255,255,255,0.05)",
-        color: "rgba(255,255,255,0.88)",
+        padding: "9px 12px",
+        border: "2px solid #111111",
+        background: active ? "#f2c230" : "#ffffff",
+        color: "#111111",
         fontSize: 12,
-        fontWeight: 700,
-        letterSpacing: 0.4,
+        fontWeight: 800,
+        letterSpacing: 1,
+        textTransform: "uppercase",
+        boxShadow: active ? "4px 4px 0 rgba(17,17,17,0.18)" : "none",
       }}
     >
       {label}
@@ -368,27 +370,27 @@ export default function PipelinePage() {
   return (
     <AppShell title="Rachel's Project">
       <div style={{ maxWidth: 1100, margin: "0 auto", paddingTop: 8 }}>
-        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 18 }}>
           <div>
+            <div style={{ display: "inline-block", padding: "7px 10px", border: "2px solid #111111", background: "#d9362b", color: "#ffffff", fontSize: 11, fontWeight: 900, letterSpacing: 2, textTransform: "uppercase" }}>
+              Production Pipeline
+            </div>
             <div
               style={{
-                fontSize: 44,
+                fontSize: "clamp(2.2rem, 6vw, 3.8rem)",
                 fontWeight: 900,
                 letterSpacing: 2,
-                margin: 0,
-                lineHeight: 1,
-                background: "linear-gradient(90deg, rgba(59,130,246,1), rgba(239,68,68,1))",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-                textShadow: "0 0 22px rgba(255,255,255,0.08)",
+                margin: "14px 0 0 0",
+                lineHeight: 0.94,
+                color: "var(--foreground)",
+                textTransform: "uppercase",
               }}
             >
               Upload & Caption Pipeline
             </div>
-            <div style={{ marginTop: 10, color: "rgba(255,255,255,0.72)", fontSize: 13, maxWidth: 760 }}>
+            <div style={{ marginTop: 10, color: "var(--text-muted)", fontSize: 13, maxWidth: 760, lineHeight: 1.5 }}>
               Upload an image, register it, and generate captions. If the server times out (504), click{" "}
-              <strong style={{ color: "rgba(255,255,255,0.9)" }}>Generate again</strong> — no re-upload needed.
+              <strong style={{ color: "var(--foreground)" }}>Generate again</strong> for captions only.
             </div>
           </div>
 
@@ -401,14 +403,13 @@ export default function PipelinePage() {
           </div>
         </div>
 
-        {/* Status bar */}
         <div style={{ marginTop: 18 }}>
           <Card>
             <div style={{ padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 13 }}>
-                  <span style={{ color: "rgba(255,255,255,0.55)" }}>Status:</span>{" "}
-                  <strong style={{ color: "rgba(255,255,255,0.92)" }}>{statusText}</strong>
+                <div style={{ color: "var(--foreground)", fontSize: 13 }}>
+                  <span style={{ color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>Status:</span>{" "}
+                  <strong style={{ color: "var(--foreground)" }}>{statusText}</strong>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -419,12 +420,13 @@ export default function PipelinePage() {
                       rel="noreferrer"
                       style={{
                         fontSize: 12,
-                        color: "rgba(255,255,255,0.8)",
                         textDecoration: "none",
                         padding: "8px 10px",
-                        borderRadius: 12,
-                        border: "1px solid rgba(255,255,255,0.14)",
-                        background: "rgba(255,255,255,0.04)",
+                        border: "2px solid #111111",
+                        background: "#1f5eff",
+                        color: "#ffffff",
+                        fontWeight: 800,
+                        textTransform: "uppercase",
                       }}
                     >
                       Open CDN
@@ -434,11 +436,10 @@ export default function PipelinePage() {
                   <div
                     style={{
                       fontSize: 12,
-                      color: "rgba(255,255,255,0.7)",
+                      color: "var(--foreground)",
                       padding: "8px 10px",
-                      borderRadius: 12,
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      background: "rgba(255,255,255,0.04)",
+                      border: "2px solid #111111",
+                      background: "var(--surface)",
                     }}
                     title={imageId ?? ""}
                   >
@@ -451,17 +452,16 @@ export default function PipelinePage() {
                 style={{
                   marginTop: 12,
                   height: 8,
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.08)",
+                  background: "var(--surface-soft)",
                   overflow: "hidden",
-                  border: "1px solid rgba(255,255,255,0.10)",
+                  border: "2px solid #111111",
                 }}
               >
                 <div
                   style={{
                     height: "100%",
                     width: `${progress}%`,
-                    background: "linear-gradient(90deg, rgba(59,130,246,1), rgba(239,68,68,1))",
+                    background: "linear-gradient(90deg, #d9362b 0 33%, #f2c230 33% 66%, #1f5eff 66% 100%)",
                     transition: "width 250ms ease",
                   }}
                 />
@@ -470,31 +470,27 @@ export default function PipelinePage() {
           </Card>
         </div>
 
-        {/* Error */}
         {error && (
           <div style={{ marginTop: 14 }}>
             <Card>
               <div
                 style={{
                   padding: 16,
-                  background: "linear-gradient(135deg, rgba(239,68,68,0.18), rgba(59,130,246,0.08))",
+                  background: "#fff3ef",
                 }}
               >
-                <div style={{ fontWeight: 900, letterSpacing: 0.6, marginBottom: 8 }}>Error</div>
-                <div style={{ color: "rgba(255,255,255,0.78)", fontSize: 13, marginBottom: 10, lineHeight: 1.4 }}>
-                  If this is a <strong style={{ color: "rgba(255,255,255,0.92)" }}>504 Gateway Timeout</strong>, the API
-                  is overloaded. Your upload/registration likely succeeded — try{" "}
-                  <strong style={{ color: "rgba(255,255,255,0.92)" }}>Generate captions again</strong>.
+                <div style={{ fontWeight: 900, letterSpacing: 1, marginBottom: 8, textTransform: "uppercase" }}>Error</div>
+                <div style={{ color: "rgba(17,17,17,0.78)", fontSize: 13, marginBottom: 10, lineHeight: 1.4 }}>
+                  If this is a <strong style={{ color: "#111111" }}>504 Gateway Timeout</strong>, the API is overloaded. Your upload or registration likely succeeded, so try <strong style={{ color: "#111111" }}>Generate captions again</strong>.
                 </div>
                 <pre
                   style={{
                     margin: 0,
                     whiteSpace: "pre-wrap",
                     fontSize: 12,
-                    color: "rgba(255,255,255,0.9)",
-                    background: "rgba(0,0,0,0.35)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: 14,
+                    color: "#111111",
+                    background: "#ffffff",
+                    border: "2px solid #111111",
                     padding: 12,
                     lineHeight: 1.35,
                   }}
@@ -506,16 +502,13 @@ export default function PipelinePage() {
           </div>
         )}
 
-        {/* Main grid */}
         <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 16 }}>
-          {/* Left: upload */}
           <Card>
             <div style={{ padding: 18 }}>
-              <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
-                1) Select an image
+              <div style={{ fontWeight: 900, letterSpacing: 1, fontSize: 14, marginBottom: 10, textTransform: "uppercase" }}>
+                1 Select an image
               </div>
 
-              {/* Dropzone-ish box */}
               <label
                 style={{
                   display: "block",
@@ -524,19 +517,17 @@ export default function PipelinePage() {
               >
                 <div
                   style={{
-                    borderRadius: 20,
-                    border: "1px dashed rgba(255,255,255,0.22)",
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))",
+                    border: "2px dashed #111111",
+                    background: "#f7f3e8",
                     padding: 18,
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                     <div>
-                      <div style={{ fontWeight: 900, fontSize: 16, color: "rgba(255,255,255,0.92)" }}>
+                      <div style={{ fontWeight: 900, fontSize: 16, color: "#111111", textTransform: "uppercase" }}>
                         Click to choose a file
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "rgba(17,17,17,0.65)" }}>
                         Supported: JPG / PNG / WEBP / GIF / HEIC
                       </div>
                     </div>
@@ -544,14 +535,14 @@ export default function PipelinePage() {
                     <div
                       style={{
                         padding: "10px 12px",
-                        borderRadius: 14,
-                        border: "1px solid rgba(255,255,255,0.16)",
-                        background: "rgba(255,255,255,0.05)",
-                        color: "rgba(255,255,255,0.88)",
+                        border: "2px solid #111111",
+                        background: "#f2c230",
+                        color: "#111111",
                         fontSize: 12,
                         fontWeight: 800,
-                        letterSpacing: 0.4,
+                        letterSpacing: 1,
                         whiteSpace: "nowrap",
+                        textTransform: "uppercase",
                       }}
                     >
                       Browse →
@@ -566,15 +557,15 @@ export default function PipelinePage() {
                     style={{ display: "none" }}
                   />
 
-                  <div style={{ marginTop: 14, color: "rgba(255,255,255,0.72)", fontSize: 12 }}>
+                  <div style={{ marginTop: 14, color: "rgba(17,17,17,0.72)", fontSize: 12 }}>
                     {file ? (
                       <>
                         <div>
-                          <strong style={{ color: "rgba(255,255,255,0.92)" }}>Selected:</strong> {file.name}
+                          <strong style={{ color: "#111111" }}>Selected:</strong> {file.name}
                         </div>
                         <div style={{ marginTop: 4 }}>
-                          <strong style={{ color: "rgba(255,255,255,0.92)" }}>Type:</strong> {file.type || "(unknown)"} •{" "}
-                          <strong style={{ color: "rgba(255,255,255,0.92)" }}>Size:</strong>{" "}
+                          <strong style={{ color: "#111111" }}>Type:</strong> {file.type || "(unknown)"} •{" "}
+                          <strong style={{ color: "#111111" }}>Size:</strong>{" "}
                           {Math.round(file.size / 1024)} KB
                         </div>
                       </>
@@ -585,7 +576,6 @@ export default function PipelinePage() {
                 </div>
               </label>
 
-              {/* CTA buttons */}
               <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
                 <button
                   onClick={runFullPipeline}
@@ -593,17 +583,14 @@ export default function PipelinePage() {
                   style={{
                     width: "100%",
                     padding: "14px 16px",
-                    borderRadius: 16,
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    background: busy
-                      ? "rgba(255,255,255,0.06)"
-                      : "linear-gradient(90deg, rgba(59,130,246,1), rgba(239,68,68,1))",
-                    color: busy ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.95)",
+                    border: "2px solid #111111",
+                    background: busy ? "#d9d2bf" : "#1f5eff",
+                    color: busy ? "rgba(17,17,17,0.65)" : "#ffffff",
                     fontWeight: 900,
                     fontSize: 14,
-                    letterSpacing: 0.6,
+                    letterSpacing: 1,
                     cursor: !file || busy ? "not-allowed" : "pointer",
-                    boxShadow: busy ? "none" : "0 18px 55px rgba(0,0,0,0.45)",
+                    boxShadow: busy ? "none" : "6px 6px 0 rgba(17,17,17,0.2)",
                   }}
                 >
                   {busy ? "Working…" : "UPLOAD + GENERATE CAPTIONS →"}
@@ -622,31 +609,30 @@ export default function PipelinePage() {
                   style={{
                     width: "100%",
                     padding: "12px 16px",
-                    borderRadius: 16,
-                    border: "1px solid rgba(255,255,255,0.16)",
-                    background: "rgba(255,255,255,0.05)",
-                    color: "rgba(255,255,255,0.9)",
+                    border: "2px solid #111111",
+                    background: "#f2c230",
+                    color: "#111111",
                     fontWeight: 850,
                     fontSize: 13,
-                    letterSpacing: 0.4,
+                    letterSpacing: 1,
                     cursor: !imageId || busy ? "not-allowed" : "pointer",
+                    textTransform: "uppercase",
                   }}
                 >
                   Generate captions again (no re-upload)
                 </button>
 
-                <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, lineHeight: 1.4 }}>
+                <div style={{ color: "rgba(17,17,17,0.55)", fontSize: 12, lineHeight: 1.4 }}>
                   Tip: If you see 504, wait ~5–15 seconds and click “Generate captions again”.
                 </div>
               </div>
             </div>
           </Card>
 
-          {/* Right: preview + results */}
           <div style={{ display: "grid", gap: 16 }}>
             <Card>
               <div style={{ padding: 18 }}>
-                <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+                <div style={{ fontWeight: 900, letterSpacing: 1, fontSize: 14, marginBottom: 10, textTransform: "uppercase" }}>
                   Preview
                 </div>
 
@@ -656,10 +642,9 @@ export default function PipelinePage() {
                     alt="preview"
                     style={{
                       width: "100%",
-                      borderRadius: 18,
                       display: "block",
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      background: "rgba(255,255,255,0.02)",
+                      border: "2px solid #111111",
+                      background: "#ffffff",
                       maxHeight: 380,
                       objectFit: "contain",
                     }}
@@ -668,12 +653,11 @@ export default function PipelinePage() {
                   <div
                     style={{
                       height: 260,
-                      borderRadius: 18,
-                      border: "1px dashed rgba(255,255,255,0.18)",
-                      background: "rgba(255,255,255,0.02)",
+                      border: "2px dashed #111111",
+                      background: "#f7f3e8",
                       display: "grid",
                       placeItems: "center",
-                      color: "rgba(255,255,255,0.55)",
+                      color: "rgba(17,17,17,0.55)",
                       fontSize: 13,
                       textAlign: "center",
                       padding: 12,
@@ -687,15 +671,15 @@ export default function PipelinePage() {
 
             <Card>
               <div style={{ padding: 18 }}>
-                <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+                <div style={{ fontWeight: 900, letterSpacing: 1, fontSize: 14, marginBottom: 10, textTransform: "uppercase" }}>
                   Output
                 </div>
 
-                <div style={{ display: "grid", gap: 10, color: "rgba(255,255,255,0.78)", fontSize: 13 }}>
+                <div style={{ display: "grid", gap: 10, color: "var(--foreground)", fontSize: 13 }}>
                   <div>
-                    <span style={{ color: "rgba(255,255,255,0.55)" }}>cdnUrl:</span>{" "}
+                    <span style={{ color: "var(--text-muted)" }}>cdnUrl:</span>{" "}
                     {cdnUrl ? (
-                      <a href={cdnUrl} target="_blank" rel="noreferrer" style={{ color: "rgba(255,255,255,0.9)" }}>
+                      <a href={cdnUrl} target="_blank" rel="noreferrer" style={{ color: "#1f5eff" }}>
                         {cdnUrl}
                       </a>
                     ) : (
@@ -703,20 +687,20 @@ export default function PipelinePage() {
                     )}
                   </div>
                   <div>
-                    <span style={{ color: "rgba(255,255,255,0.55)" }}>imageId:</span> {imageId ?? "—"}
+                    <span style={{ color: "var(--text-muted)" }}>imageId:</span> {imageId ?? "—"}
                   </div>
                 </div>
 
                 <div style={{ marginTop: 14 }}>
-                  <div style={{ fontWeight: 900, marginBottom: 8 }}>Captions</div>
+                  <div style={{ fontWeight: 900, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1, color: "var(--foreground)" }}>Captions</div>
 
                   {captions ? (
                     captions.length === 0 ? (
-                      <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>
+                      <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
                         Captions still generating. Try again in a few seconds.
                       </div>
                     ) : (
-                      <ol style={{ paddingLeft: 18, margin: 0, color: "rgba(255,255,255,0.9)" }}>
+                      <ol style={{ paddingLeft: 18, margin: 0, color: "var(--foreground)" }}>
                         {captions.map((c, idx) => {
                           const text = c?.content ?? c?.caption ?? c?.text ?? c?.result ?? null;
                           return (
@@ -729,10 +713,9 @@ export default function PipelinePage() {
                                     whiteSpace: "pre-wrap",
                                     fontSize: 12,
                                     margin: 0,
-                                    color: "rgba(255,255,255,0.85)",
-                                    background: "rgba(0,0,0,0.30)",
-                                    border: "1px solid rgba(255,255,255,0.10)",
-                                    borderRadius: 14,
+                                    color: "var(--foreground)",
+                                    background: "var(--surface)",
+                                    border: "2px solid #111111",
                                     padding: 10,
                                   }}
                                 >
@@ -745,7 +728,7 @@ export default function PipelinePage() {
                       </ol>
                     )
                   ) : (
-                    <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>No captions yet.</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: 13 }}>No captions yet.</div>
                   )}
                 </div>
               </div>
@@ -753,11 +736,10 @@ export default function PipelinePage() {
           </div>
         </div>
 
-        {/* Debug */}
         <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <Card>
             <div style={{ padding: 18 }}>
-              <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+              <div style={{ fontWeight: 900, letterSpacing: 1, fontSize: 14, marginBottom: 10, textTransform: "uppercase" }}>
                 Debug Log
               </div>
               <pre
@@ -765,10 +747,9 @@ export default function PipelinePage() {
                   margin: 0,
                   whiteSpace: "pre-wrap",
                   fontSize: 12,
-                  color: "rgba(255,255,255,0.88)",
-                  background: "rgba(0,0,0,0.35)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  borderRadius: 16,
+                  color: "#111111",
+                  background: "#ffffff",
+                  border: "2px solid #111111",
                   padding: 12,
                   lineHeight: 1.35,
                   maxHeight: 260,
@@ -782,7 +763,7 @@ export default function PipelinePage() {
 
           <Card>
             <div style={{ padding: 18 }}>
-              <div style={{ fontWeight: 900, letterSpacing: 0.6, fontSize: 14, marginBottom: 10 }}>
+              <div style={{ fontWeight: 900, letterSpacing: 1, fontSize: 14, marginBottom: 10, textTransform: "uppercase" }}>
                 Raw API Response
               </div>
               <pre
@@ -790,10 +771,9 @@ export default function PipelinePage() {
                   margin: 0,
                   whiteSpace: "pre-wrap",
                   fontSize: 12,
-                  color: "rgba(255,255,255,0.88)",
-                  background: "rgba(0,0,0,0.35)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  borderRadius: 16,
+                  color: "#111111",
+                  background: "#ffffff",
+                  border: "2px solid #111111",
                   padding: 12,
                   lineHeight: 1.35,
                   maxHeight: 260,
