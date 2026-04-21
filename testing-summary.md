@@ -1,0 +1,8 @@
+- Ran repeated local validation on the Next app with `npm run build` and `npm run dev`; the app compiled cleanly and the main routes served successfully.
+- Verified the caption browsing flow and fixed the captions page so it now loads real records from the `captions` table instead of incorrectly showing `images.image_description`.
+- Added pagination and sorting to the captions page so larger caption sets can be browsed safely instead of stopping at a fixed small limit.
+- Tested the rating workflow and fixed voting behavior so votes save correctly, advance to the next caption, and support undoing the last vote from the following caption.
+- Improved the rating workflow UX by restoring navigation momentum after voting while still allowing a return to the previously voted caption for re-voting.
+- Checked the upload/pipeline and archive pages and fixed multiple dark/light theme contrast problems where titles, labels, and status blocks became unreadable.
+- Cleaned up the home page presentation by removing an unclear decorative block and keeping the shared shell/theme behavior consistent across routes.
+- Submission is only partially unblockable from this repo: this workspace contains one app, not the three separate apps requested in the assignment, and the fallback Vercel preview deploy did not return a usable preview URL in this environment.
